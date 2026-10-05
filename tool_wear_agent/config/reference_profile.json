@@ -1,0 +1,105 @@
+{
+  "profile_version": "tool_wear_agent",
+  "description": "Ti-6Al-4V 실시간형 데모 프로파일. 공구 마모는 정상에서 사용 한계까지 자동 진행한다. 공구 교체 버튼은 모든 상태에서 즉시 교체를 수행하고, 새 공구는 재검증 통과 후 사용자가 이어서 시작 버튼을 눌러야 가공을 재개한다. 선택한 센서 이상은 즉시 발생하지 않고 정상 진행 후 지연 발생한다. Cycle 번호는 런타임 정답으로 사용하지 않는다.",
+  "acquisition": {
+    "simulation_sample_rate_hz": 512,
+    "window_seconds": 1.0,
+    "display_update_seconds": 1.0,
+    "webdaq_manual_max_sample_rate_hz": 51200,
+    "webdaq_channels": 4,
+    "kistler_components": [
+      "Fx",
+      "Fy",
+      "Fz",
+      "Mz"
+    ]
+  },
+  "baseline": {
+    "vibration_rms": 1.2079262183784678,
+    "vibration_std": 1.2079262183784678,
+    "sound_rms": 0.24907196864863657,
+    "sound_energy": 0.0620368455665074,
+    "force_resultant_rms": 98.5016150986192,
+    "fx_rms": 14.315188147995459,
+    "fy_rms": 11.004194755867248,
+    "fz_rms": 96.83259401203172,
+    "mz_rms": 0.09308928145812113,
+    "fx_std": 14.309428854398263,
+    "fy_std": 10.930152781560828,
+    "fz_std": 2.6669784798077885,
+    "fx_std_p95": 14.80103797120739,
+    "fy_std_p95": 11.285487852364199,
+    "fz_std_p95": 2.9366808336825483,
+    "empirical_fault_ratio_limits": {
+      "vibration": 2.15,
+      "sound": 2.397633356805547,
+      "force": 2.396357843221012
+    }
+  },
+  "noise_sigma": {
+    "vibration": 0.08,
+    "sound": 0.06,
+    "force": 0.8,
+    "torque": 0.05
+  },
+  "manual_operating_rules": {
+    "force_axis_variability_ratio": 1.8,
+    "force_resultant_ratio": 1.25,
+    "sustained_windows": 3,
+    "sustained_window_span": 4,
+    "sensor_integrity_min": 80,
+    "critical_wear_index": 80
+  },
+  "wear_scenarios": {
+    "NORMAL": {
+      "target": 4,
+      "rate": 0.2
+    },
+    "EARLY_WEAR": {
+      "target": 28,
+      "rate": 1.1
+    },
+    "MODERATE_WEAR": {
+      "target": 52,
+      "rate": 1.45
+    },
+    "SEVERE_WEAR": {
+      "target": 74,
+      "rate": 1.9
+    },
+    "CRITICAL_WEAR": {
+      "target": 96,
+      "rate": 2.6
+    }
+  },
+  "auto_wear_progression": {
+    "start": 4.0,
+    "rate_per_window": 1.35,
+    "max": 100.0,
+    "note": "1초 Window 기준 자동 마모 진행. 센서 이상이 활성화되어도 실제 공구 마모도는 계속 누적됨."
+  },
+  "revalidation": {
+    "required_consecutive_windows": 6,
+    "min_sensor_integrity": 80,
+    "max_wear_index": 15,
+    "note": "공구 교체 후 새 공구는 정상 기준 부근 센서 데이터를 연속 6개 Window 확인해야 가공 시작 가능. 센서 이상 또는 기준 이탈 시 연속 카운트는 0으로 재설정."
+  },
+  "fault_injection": {
+    "delay_windows": 8,
+    "note": "사용자가 센서 이상을 선택해도 즉시 주입하지 않고 정상 진행 8개 Window 뒤 실제 이상 신호가 갑자기 발생한다. 복수 선택 가능.",
+    "delay_windows_by_sensor": {
+      "VIBRATION": 8,
+      "SOUND": 12,
+      "FORCE": 16
+    }
+  },
+  "lifecycle": {
+    "enabled": true,
+    "profile_file": "lifecycle_profile.json",
+    "note": "같은 공구의 날짜순 11시점. 11번째 진동/음향은 보정계수 미확인으로 10번째 분포 유지. 진행도는 데모 시간축이며 VBmax가 아님.",
+    "sampling_quantiles": [
+      0.05,
+      0.95
+    ]
+  }
+}

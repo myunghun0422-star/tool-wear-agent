@@ -1,0 +1,16 @@
+tool_wear_agent 실행 방법
+
+1. Python 3.10 이상 설치
+2. 이 폴더에서 터미널 실행
+3. 패키지 설치
+   py -m pip install -r requirements.txt
+   (py가 없으면 python 사용)
+4. 실행
+   py run_web.py
+5. 브라우저 접속
+   http://127.0.0.1:8001
+6. 종료
+   터미널에서 Ctrl + C
+
+상세 실행 및 구조 설명: README.md
+데이터·매뉴얼·AI 활용 출처: SOURCES.md

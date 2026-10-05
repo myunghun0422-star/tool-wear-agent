@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI 공구 상태 모니터링 에이전트</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; background-color: #07111F; color: #EEF4FB; font-family: 'Geist', sans-serif; }
+      body { overflow-x: hidden; }
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #07111F; }
+    ::-webkit-scrollbar-thumb { background: #22344D; border-radius: 3px; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: "#07111F",
+            card: "#0F1B2D",
+            subtle: "#17263C",
+            border: "#22344D",
+            primary: "#10B981",
+            warning: "#F59E0B",
+            orangeAlert: "#F97316",
+            danger: "#EF4444",
+            purpleReval: "#8B5CF6",
+            textMain: "#EEF4FB",
+            textMuted: "#8CA2BA"
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+            sans: ['Geist', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#07111F] text-[#EEF4FB] min-h-screen antialiased select-none flex flex-col justify-between text-xs">
+<!-- ========================================================
+       TOP UNIFIED HEADER & 7-BUTTON CONTROL BAR (Single Row)
+  ======================================================== -->
+<header class="w-full bg-[#0F1B2D] border-b border-[#22344D] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50 shadow-md">
+<!-- Left: Title, Process Tag, Live Indicator -->
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-[#17263C] border border-[#22344D] flex items-center justify-center text-[#10B981] shrink-0">
+<span class="material-symbols-outlined text-[22px]">precision_manufacturing</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h1 class="font-bold text-base text-[#EEF4FB] tracking-tight">AI 공구 상태 모니터링 에이전트</h1>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#17263C] text-[#10B981] font-mono font-bold border border-[#10B981]/30">TOOL WEAR AI AGENT</span>
+<span class="hidden md:inline-block text-[11px] text-[#8CA2BA] border-l border-[#22344D] pl-2">Ti-6Al-4V 난삭재 밀링 (Spindle #01)</span>
+</div>
+<div class="flex items-center gap-2 text-[11px] font-mono mt-0.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]" id="status-pulse-dot"></span>
+</span>
+<span class="text-[#10B981] font-bold" id="status-pulse-text">● CONNECTED / STANDBY</span>
+<span class="text-[#8CA2BA]">RECORDED DATA SIMULATION</span>
+<span class="hidden lg:inline text-[#8CA2BA]/60">•</span>
+<span class="hidden lg:inline text-[#8CA2BA]" id="packet-counter">Packet #0</span>
+</div>
+</div>
+</div>
+<!-- Right: Unified 7-Button Group & Status Subtext -->
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-1.5 bg-[#07111F] p-1 rounded-lg border border-[#22344D]">
+<!-- 1) 모니터링 시작 -->
+<button class="h-8 px-3 rounded bg-[#10B981] hover:bg-[#059669] text-[#07111F] font-bold text-xs flex items-center gap-1 shadow transition-all active:scale-95" id="btn-start" onclick="handleStartMonitoring()" type="button">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span>
+<span>모니터링 시작</span>
+</button>
+<!-- 2) 일시정지 -->
+<button class="h-8 px-2.5 rounded bg-[#0F1B2D] border border-[#22344D] text-[#EEF4FB] hover:bg-[#17263C] font-medium text-xs flex items-center gap-1 transition-all active:scale-95" id="btn-pause" onclick="handlePauseMonitoring()" type="button">
+<span class="material-symbols-outlined text-[16px]">pause</span>
+<span>일시정지</span>
+</button>
+<!-- 3) 세션 초기화 -->
+<button class="h-8 px-2.5 rounded bg-[#17263C] hover:bg-[#22344D] text-[#8CA2BA] hover:text-[#EEF4FB] font-medium text-xs flex items-center gap-1 transition-all" id="btn-reset-session" onclick="handleResetSession()" title="현재 공구/누적 마모는 유지하고 실시간 세션만 초기화합니다." type="button">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+<span>세션 초기화</span>
+</button>
+<!-- 4) 전체 초기화 -->
+<button class="h-8 px-2.5 rounded bg-[#17263C] hover:bg-[#22344D] text-[#8CA2BA] hover:text-[#EEF4FB] font-medium text-xs flex items-center gap-1 transition-all" id="btn-reset-all" onclick="handleResetAll()" title="새 시연 RUN을 만들고 표시 Tool ID를 T-2026-001로 되돌립니다. 과거 이력은 보존됩니다." type="button">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+<span>전체 초기화</span>
+</button>
+<div class="h-4 w-px bg-[#22344D] mx-0.5"></div>
+<!-- 5) 공구 교체 -->
+<button class="h-8 px-3 rounded bg-[#F97316] hover:bg-[#ea580c] text-[#07111F] font-bold text-xs flex items-center gap-1 shadow transition-all active:scale-95" id="btn-tool-replace" onclick="handleToolReplace()" title="가공 중인 공구를 교체하고 새 공구 재검증 단계로 이동합니다." type="button">
+<span class="material-symbols-outlined text-[16px]">construction</span>
+<span>공구 교체 <span class="text-[10px] font-mono px-1 py-0.2 rounded bg-black/20 text-[#07111F]">대기</span></span>
+</button>
+<!-- 6) 새 공구 검증 (Disabled state) -->
+<button class="h-8 px-3 rounded border border-[#8B5CF6]/30 text-[#8B5CF6]/50 bg-[#8B5CF6]/5 font-semibold text-xs flex items-center gap-1 cursor-not-allowed transition-all" disabled="" id="btn-verify-tool" onclick="handleRunValidation()" title="공구 교체 후 새 공구 6개 구간 재검증을 시작합니다." type="button">
+<span class="material-symbols-outlined text-[16px]">search</span>
+<span>새 공구 검증</span>
+</button>
+<!-- 7) 이어서 시작 (Disabled state) -->
+<button class="h-8 px-3 rounded border border-[#10B981]/30 text-[#10B981]/50 bg-[#10B981]/5 font-semibold text-xs flex items-center gap-1 cursor-not-allowed transition-all" disabled="" id="btn-resume-prod" onclick="handleResumeProduction()" title="재검증 통과 후 새 공구 가공을 이어서 시작합니다." type="button">
+<span class="material-symbols-outlined text-[16px]">play_circle</span>
+<span>이어서 시작</span>
+</button>
+</div>
+<!-- Subtle status cue text -->
+<span class="text-[10px] text-[#8CA2BA] font-mono tracking-tight" id="header-status-cue">
+        현재 상태: <strong class="text-[#10B981]">가공 중</strong> (공구 교체 가능) | 검증·이어서 시작은 교체 후 순차 활성화
+      </span>
+</div>
+</header>
+<!-- ========================================================
+       MAIN DASHBOARD: WIDESCREEN 1920x1080 OPTIMIZED LAYOUT
+  ======================================================== -->
+<main class="w-full flex-1 px-4 py-2.5 space-y-2.5 max-w-[1920px] mx-auto">
+<!-- ========================================================
+         ROW 0: CONDITIONAL ALERT BANNER (Compact, Sleek)
+    ======================================================== -->
+<section class="w-full bg-[#F59E0B]/10 border border-[#F59E0B] rounded-lg px-3.5 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md transition-all" id="primary-alert-banner">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-md bg-[#F59E0B]/20 border border-[#F59E0B]/40 flex items-center justify-center text-[#F59E0B] shrink-0" id="banner-icon-box">
+<span class="material-symbols-outlined text-[18px]" id="banner-icon">warning</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+<span class="font-bold text-sm text-[#F59E0B]" id="banner-title">공구 마모 진행 주의 (Tool Wear Acceleration Alert)</span>
+<span class="text-xs text-[#EEF4FB]" id="banner-desc">Flank Wear(VB) <strong class="text-[#F59E0B] font-mono">0.28mm</strong> 도달. 18분 이내 공구 교체 권장</span>
+<span class="text-xs text-[#8CA2BA] border-l border-[#22344D] pl-2.5 flex items-center gap-1">
+            설비 HOLD 카운트다운: <strong class="font-mono text-sm text-[#F59E0B]" id="countdown-timer">18:04</strong>
+</span>
+</div>
+</div>
+<!-- State Preset Quick Pills -->
+<div class="flex items-center gap-1.5 font-mono text-[11px] ml-auto">
+
+
+
+
+
+</div>
+</section>
+<!-- ========================================================
+         ROW 1: KEY 7 KPI CARDS (Single Horizontal Row)
+    ======================================================== -->
+<section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+<!-- KPI 1: 공구 식별 -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#10B981]/40 transition-colors">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>공구 ID (TOOL ID)</span>
+<span class="material-symbols-outlined text-[15px] text-[#10B981]">tag</span>
+</div>
+<div class="my-1">
+<div class="text-2xl font-mono font-bold text-[#EEF4FB] tracking-tight leading-none" id="kpi-tool-id">T-2024-TI-084</div>
+<div class="text-[11px] text-[#8CA2BA] truncate mt-1">TiAlN Ø12 엔드밀</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>포켓 슬롯</span>
+<span class="text-[#EEF4FB] font-mono font-semibold">#01</span>
+</div>
+</div>
+<!-- KPI 2: 공구 상태 -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#F97316]/40 transition-colors">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>공구 상태 (STATUS)</span>
+<span class="material-symbols-outlined text-[15px] text-[#F97316]">hardware</span>
+</div>
+<div class="my-1">
+<div class="text-2xl font-bold text-[#F97316] tracking-tight leading-none" id="kpi-tool-status">교체 권장</div>
+<div class="text-[11px] text-[#F97316]/90 font-mono mt-1" id="kpi-status-sub">Warning (마모 가속)</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>마모 진행률</span>
+<span class="text-[#F97316] font-mono font-bold" id="kpi-wear-pct">82.0%</span>
+</div>
+</div>
+<!-- KPI 3: 공구 건강도 -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#F59E0B]/40 transition-colors">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>공구 건강도 (HEALTH)</span>
+<span class="material-symbols-outlined text-[15px] text-[#F59E0B]">favorite</span>
+</div>
+<div class="my-1">
+<div class="text-2xl font-mono font-bold text-[#F59E0B] tracking-tight leading-none" id="kpi-health-val">38.4%</div>
+<div class="w-full bg-[#17263C] h-1.5 rounded-full mt-1.5 overflow-hidden">
+<div class="bg-[#F59E0B] h-full transition-all duration-500 rounded-full" id="kpi-health-bar" style="width: 38.4%;"></div>
+</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>임계 기준선</span>
+<span class="text-[#8CA2BA] font-mono">30.0% Cutoff</span>
+</div>
+</div>
+<!-- KPI 4: Wear Index (VB) -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#F97316]/40 transition-colors">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>마모 지수 (WEAR INDEX)</span>
+<span class="material-symbols-outlined text-[15px] text-[#F97316]">straighten</span>
+</div>
+<div class="my-1">
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-mono font-bold text-[#F97316] tracking-tight leading-none" id="kpi-vb-val">0.28</span>
+<span class="text-xs text-[#8CA2BA] font-mono">/ 100</span>
+</div>
+<div class="text-[11px] text-[#8CA2BA] mt-1">센서 기반 종합 마모 점수</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>교체 필요 한계선</span>
+<span class="text-[#EF4444] font-mono font-bold">0.30 mm</span>
+</div>
+</div>
+<!-- KPI 5: 잔여수명 RUL -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#10B981]/40 transition-colors">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>예상 잔여수명</span>
+<span class="material-symbols-outlined text-[15px] text-[#10B981]">timer</span>
+</div>
+<div class="my-1">
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-mono font-bold text-[#EEF4FB] tracking-tight leading-none" id="kpi-rul-val">18.2</span>
+<span class="text-xs text-[#8CA2BA] font-mono" id="kpi-rul-unit"></span>
+</div>
+<div class="text-[11px] text-[#10B981] font-mono mt-1" id="kpi-rul-sub">센서 추세 기반 추정</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>신뢰구간 (MLE)</span>
+<span class="text-[#10B981] font-mono">±1.4 min</span>
+</div>
+</div>
+<!-- KPI 6: 센서 신뢰도 -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#10B981]/40 transition-colors">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>센서 신뢰도 (RELIABILITY)</span>
+<span class="material-symbols-outlined text-[15px] text-[#10B981]">sensors</span>
+</div>
+<div class="my-1">
+<div class="text-2xl font-mono font-bold text-[#10B981] tracking-tight leading-none" id="kpi-sensor-rel-val">99.1%</div>
+<div class="inline-flex items-center gap-1 text-[11px] text-[#10B981] font-medium mt-1" id="kpi-sensor-badge">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+<span>정상 (Fault 미검출)</span>
+</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>다변량 상관계수 r</span>
+<span class="text-[#EEF4FB] font-mono font-bold" id="kpi-corr-r">0.94 (우수)</span>
+</div>
+</div>
+<!-- KPI 7: 설비 상태 -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between hover:border-[#10B981]/40 transition-colors col-span-2 sm:col-span-4 lg:col-span-1">
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA]">
+<span>설비 상태 (CNC STATE)</span>
+<span class="material-symbols-outlined text-[15px] text-[#10B981]">speed</span>
+</div>
+<div class="my-1">
+<div class="text-xl font-mono font-bold text-[#10B981] tracking-tight truncate leading-none" id="kpi-cnc-state">FEEDING 가공중</div>
+<div class="text-[11px] text-[#8CA2BA] font-mono mt-1" id="kpi-machine-sub">AI Agent 제어 상태</div>
+</div>
+<div class="text-[10px] text-[#8CA2BA] flex items-center justify-between border-t border-[#22344D]/70 pt-1.5">
+<span>워크플로우</span>
+<span class="text-[#EEF4FB] font-mono font-bold" id="kpi-workflow">READY</span>
+</div>
+</div>
+</section>
+<!-- ========================================================
+         ROW 2: REAL-TIME SENSOR OSCILLOSCOPES (3 Equal Columns)
+    ======================================================== -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+<!-- Scope 1: 진동 RMS -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between h-[160px]">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+<span class="font-bold text-xs text-[#EEF4FB]" id="sensor-title-vib">진동 RMS (3-Axis 원신호 Feature)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-mono text-[#8CA2BA]" id="threshold-head-vib">센서 이상 기준: <strong class="text-[#F59E0B]">2.597 RMS</strong></span>
+<span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#17263C] text-[#10B981] font-bold" id="live-rate-vib">512Hz LIVE</span>
+</div>
+</div>
+<div class="relative w-full flex-1 my-1.5 bg-[#040912] rounded border border-[#22344D] overflow-hidden flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full opacity-15" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="16" id="grid-vib-w" patternunits="userSpaceOnUse" width="16">
+<path d="M 16 0 L 0 0 0 16" fill="none" stroke="#10B981" stroke-width="0.5"></path>
+</pattern>
+</defs>
+<rect fill="url(#grid-vib-w)" height="100%" width="100%"></rect>
+</svg>
+<div class="absolute top-[20%] left-0 right-0 border-t border-dashed border-[#F59E0B]/70 z-10 flex justify-end pr-1.5" id="threshold-line-vib">
+<span class="text-[9px] text-[#F59E0B] font-mono -mt-2 bg-[#040912]/80 px-1" id="threshold-label-vib">센서 이상 기준 2.597 RMS</span>
+</div>
+<svg class="w-full h-full z-10" preserveaspectratio="none" viewbox="0 0 300 80">
+<path d="M0,45 Q20,25 40,45 T80,42 T120,20 T160,56 T200,32 T240,48 T280,35 L300,40" fill="none" id="svg-wave-vib" stroke="#10B981" stroke-linecap="round" stroke-width="2.2"></path>
+<circle class="animate-pulse" cx="300" cy="40" fill="#10B981" id="svg-dot-vib" r="3"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono">
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-bold text-[#EEF4FB] leading-none" id="wave-val-vib" >—</span>
+<span class="text-[10px] text-[#8CA2BA]" id="wave-unit-vib">RMS</span>
+</div>
+<span class="text-[#8CA2BA]" id="window-info-vib">분석 구간: —</span>
+<span class="text-[#10B981] font-semibold" id="wave-peak-vib">Peak: —</span>
+</div>
+</div>
+<!-- Scope 2: 절삭력 RMS -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between h-[160px]">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse"></span>
+<span class="font-bold text-xs text-[#EEF4FB]" id="sensor-title-force">절삭력 Resultant RMS (Fx/Fy/Fz 로드셀)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-mono text-[#8CA2BA]" id="threshold-head-force">센서 이상 기준: <strong class="text-[#EF4444]">236.0 N</strong></span>
+<span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#17263C] text-[#F59E0B] font-bold" id="live-rate-force">512Hz LIVE</span>
+</div>
+</div>
+<div class="relative w-full flex-1 my-1.5 bg-[#040912] rounded border border-[#22344D] overflow-hidden flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full opacity-15" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="16" id="grid-force-w" patternunits="userSpaceOnUse" width="16">
+<path d="M 16 0 L 0 0 0 16" fill="none" stroke="#F59E0B" stroke-width="0.5"></path>
+</pattern>
+</defs>
+<rect fill="url(#grid-force-w)" height="100%" width="100%"></rect>
+</svg>
+<div class="absolute top-[18%] left-0 right-0 border-t border-dashed border-[#EF4444]/70 z-10 flex justify-end pr-1.5" id="threshold-line-force">
+<span class="text-[9px] text-[#EF4444] font-mono -mt-2 bg-[#040912]/80 px-1" id="threshold-label-force">센서 이상 기준 236.0 N</span>
+</div>
+<svg class="w-full h-full z-10" preserveaspectratio="none" viewbox="0 0 300 80">
+<path d="M0,50 Q25,22 50,50 T100,48 T150,30 T200,60 T250,34 L300,42" fill="none" id="svg-wave-force" stroke="#F59E0B" stroke-linecap="round" stroke-width="2.2"></path>
+<circle class="animate-pulse" cx="300" cy="42" fill="#F59E0B" id="svg-dot-force" r="3"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono">
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-bold text-[#F59E0B] leading-none" id="wave-val-force" >—</span>
+<span class="text-[10px] text-[#8CA2BA]" id="wave-unit-force">N</span>
+</div>
+<span class="text-[#8CA2BA]" id="force-axis-summary">Fx/Fy/Fz RMS 대기</span>
+<span class="text-[#F59E0B] font-semibold" id="wave-peak-force">Resultant RMS: —</span>
+</div>
+</div>
+<!-- Scope 3: 음향 방출 RMS -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between h-[160px]">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></span>
+<span class="font-bold text-xs text-[#EEF4FB]" id="sensor-title-ae">음향 RMS (Acoustic 원신호 Feature)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-mono text-[#8CA2BA]" id="threshold-head-ae">센서 이상 기준: <strong class="text-[#F59E0B]">0.5972 RMS</strong></span>
+<span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#17263C] text-[#38bdf8] font-bold" id="live-rate-ae">512Hz LIVE</span>
+</div>
+</div>
+<div class="relative w-full flex-1 my-1.5 bg-[#040912] rounded border border-[#22344D] overflow-hidden flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full opacity-15" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="16" id="grid-ae-w" patternunits="userSpaceOnUse" width="16">
+<path d="M 16 0 L 0 0 0 16" fill="none" stroke="#38bdf8" stroke-width="0.5"></path>
+</pattern>
+</defs>
+<rect fill="url(#grid-ae-w)" height="100%" width="100%"></rect>
+</svg>
+<div class="absolute top-[20%] left-0 right-0 border-t border-dashed border-[#F59E0B]/70 z-10 flex justify-end pr-1.5" id="threshold-line-ae">
+<span class="text-[9px] text-[#F59E0B] font-mono -mt-2 bg-[#040912]/80 px-1" id="threshold-label-ae">센서 이상 기준 0.5972 RMS</span>
+</div>
+<svg class="w-full h-full z-10" preserveaspectratio="none" viewbox="0 0 300 80">
+<path d="M0,45 Q15,55 30,35 T60,48 T90,26 T120,60 T150,38 T180,50 T210,30 T250,52 L300,43" fill="none" id="svg-wave-ae" stroke="#38bdf8" stroke-linecap="round" stroke-width="2.2"></path>
+<circle class="animate-pulse" cx="300" cy="43" fill="#38bdf8" id="svg-dot-ae" r="3"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono">
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-bold text-[#EEF4FB] leading-none" id="wave-val-ae" >—</span>
+<span class="text-[10px] text-[#8CA2BA]" id="wave-unit-ae">RMS</span>
+</div>
+<span class="text-[#8CA2BA]" id="window-info-sound">분석 구간: —</span>
+<span class="text-[#38bdf8] font-semibold" id="wave-peak-ae">Peak: —</span>
+</div>
+</div>
+</section>
+<!-- ========================================================
+         ROW 3: TOOL WEAR TREND (2/3) & AI AGENT DIAGNOSTICS (1/3)
+    ======================================================== -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-2.5">
+<!-- Left (8 Cols / approx 2/3): Dual Trend Line Chart -->
+<div class="lg:col-span-8 bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div>
+<h3 class="font-bold text-xs text-[#EEF4FB]">공구 마모 지수 및 잔여 건강도 장기 추세</h3>
+<p class="text-[10px] text-[#8CA2BA]">최근 실시간 Window 기준 Wear Index / Tool Health 변화</p>
+</div>
+<div class="flex items-center gap-3 font-mono text-[11px]">
+<span class="flex items-center gap-1"><span class="w-3 h-1 bg-[#F97316] rounded-full inline-block"></span> Flank Wear VB (mm)</span>
+<span class="flex items-center gap-1"><span class="w-3 h-1 bg-[#10B981] rounded-full inline-block"></span> Health (%)</span>
+</div>
+</div>
+<!-- Trend Graph Container -->
+<div class="relative w-full h-44 bg-[#07111F] rounded border border-[#22344D] p-2 flex flex-col justify-between overflow-hidden my-1.5">
+<!-- Zone Badges -->
+<div class="grid grid-cols-3 w-full text-center text-[10px] font-medium text-[#8CA2BA] border-b border-[#22344D] pb-1 z-10">
+<div class="border-r border-[#22344D]">초기 마모 구간 (0~15분)</div>
+<div class="border-r border-[#22344D] bg-[#10B981]/5 text-[#10B981] font-semibold">정상 마모 구간 (15~95분)</div>
+<div class="bg-[#EF4444]/10 text-[#EF4444] font-bold">가속 마모 경고 구간 (95분~)</div>
+</div>
+<!-- SVG Dual Chart -->
+<svg class="w-full h-28 z-10 my-0.5" id="wear-trend-svg" preserveaspectratio="none" viewbox="0 0 500 120"><text fill="#8CA2BA" font-size="12" text-anchor="middle" x="250" y="65">모니터링 시작 후 추세가 표시됩니다.</text></svg>
+<!-- X-Axis Labels -->
+<div class="flex items-center justify-between text-[#8CA2BA] text-[10px] font-mono px-1 border-t border-[#22344D] pt-0.5">
+<span>과거</span>
+<span></span>
+<span>최근 Window</span>
+<span></span>
+<span class="text-[#EF4444] font-bold">현재</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px] text-[#8CA2BA] font-mono">
+<span>실시간 센서 Feature와 최근 마모 추세 기반</span>
+<span class="text-[#10B981] font-semibold">잔여수명은 최근 마모 추세 기반 범위 추정</span>
+</div>
+</div>
+<!-- Right (4 Cols / approx 1/3): AI Agent Autonomous Diagnostics -->
+<div class="lg:col-span-4 bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[#10B981] text-[18px]">psychology</span>
+<h3 class="font-bold text-xs text-[#EEF4FB]">AI Agent 판단 과정</h3>
+</div>
+<span class="font-mono text-[10px] px-2 py-0.2 rounded-full bg-[#10B981]/15 text-[#10B981] font-bold border border-[#10B981]/30" id="ai-confidence">신뢰도: —</span>
+</div>
+<!-- Current Diagnosis Box -->
+<div class="bg-[#17263C] rounded p-2.5 my-2 border-l-2 border-[#F59E0B]">
+<div class="text-[10px] text-[#8CA2BA] font-medium">현재 진단 상태</div>
+<div class="font-bold text-xs text-[#F59E0B] mt-0.5" id="ai-state">모니터링 시작 후 진단이 표시됩니다.</div>
+<div class="text-[10px] text-[#8CA2BA] font-medium mt-1.5">권장 조치 SOP</div>
+<div class="text-[11px] text-[#EEF4FB] font-medium mt-0.5" id="ai-action">시작 대기</div>
+</div>
+<!-- Key Evidence Bullets (3 items) -->
+<div class="space-y-1.5 text-[11px] text-[#EEF4FB] my-2" id="ai-reasons"><div class="text-[#8CA2BA]">모니터링 시작 후 실제 센서 근거가 표시됩니다.</div></div>
+</div>
+<!-- Accordion: Detailed pipeline models -->
+<div class="pt-1.5 border-t border-[#22344D]">
+<button class="w-full flex items-center justify-between text-[11px] text-[#8CA2BA] hover:text-[#EEF4FB] py-0.5 transition-colors" onclick="toggleAccordion('model-details-body', 'acc-icon-model')" type="button">
+<span class="flex items-center gap-1 font-mono">
+<span class="material-symbols-outlined text-[14px]">account_tree</span>
+<span>판단 단계 보기</span>
+</span>
+<span class="material-symbols-outlined text-[15px] transition-transform" id="acc-icon-model">expand_more</span>
+</button>
+<div class="hidden pt-1.5 flex flex-wrap gap-1 font-mono text-[10px]" id="model-details-body">
+<span class="px-1.5 py-0.5 rounded bg-[#07111F] border border-[#22344D] text-[#8CA2BA]">센서 상태 확인</span>
+<span class="px-1.5 py-0.5 rounded bg-[#07111F] border border-[#22344D] text-[#8CA2BA]">공구 마모 추정</span>
+<span class="px-1.5 py-0.5 rounded bg-[#07111F] border border-[#22344D] text-[#8CA2BA]">매뉴얼 근거 확인</span>
+<span class="px-1.5 py-0.5 rounded bg-[#07111F] border border-[#22344D] text-[#8CA2BA]">잔여수명 추정</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================
+         ROW 4: SENSOR SIMULATOR (Card 1) + BASELINE TABLE (Card 2) + SAFETY GATE (Card 3)
+    ======================================================== -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+<!-- Card 1: 센서 이상 시나리오 선택 (Sensor Fault Simulation & Defense) -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[#EF4444] text-[17px]">troubleshoot</span>
+<h3 class="font-bold text-xs text-[#EEF4FB]">센서 이상 시나리오 선택</h3>
+</div>
+<span class="text-[10px] text-[#8CA2BA] font-mono">테스트용 이상 주입</span>
+</div>
+<div class="space-y-1.5 my-2">
+<label class="flex items-center justify-between p-2 rounded bg-[#17263C] hover:bg-[#22344D] cursor-pointer transition-colors border border-[#22344D]">
+<div class="flex items-center gap-2">
+<input class="w-3.5 h-3.5 rounded bg-[#07111F] text-[#10B981] border-[#22344D] focus:ring-0" id="chk-vib-anomaly" onchange="triggerAnomalyPipeline('진동')" type="checkbox"/>
+<span class="text-[11px] font-medium text-[#EEF4FB]">진동 센서 이상</span>
+</div>
+<span class="text-[10px] text-[#8CA2BA] font-mono">진동 신호</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-[#17263C] hover:bg-[#22344D] cursor-pointer transition-colors border border-[#22344D]">
+<div class="flex items-center gap-2">
+<input class="w-3.5 h-3.5 rounded bg-[#07111F] text-[#10B981] border-[#22344D] focus:ring-0" id="chk-force-anomaly" onchange="triggerAnomalyPipeline('절삭력')" type="checkbox"/>
+<span class="text-[11px] font-medium text-[#EEF4FB]">절삭력 센서 이상</span>
+</div>
+<span class="text-[10px] text-[#8CA2BA] font-mono">Fx/Fy/Fz</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-[#17263C] hover:bg-[#22344D] cursor-pointer transition-colors border border-[#22344D]">
+<div class="flex items-center gap-2">
+<input class="w-3.5 h-3.5 rounded bg-[#07111F] text-[#10B981] border-[#22344D] focus:ring-0" id="chk-ae-anomaly" onchange="triggerAnomalyPipeline('음향')" type="checkbox"/>
+<span class="text-[11px] font-medium text-[#EEF4FB]">음향 센서 이상</span>
+</div>
+<span class="text-[10px] text-[#8CA2BA] font-mono">음향 신호</span>
+</label>
+</div>
+<div class="bg-[#07111F] p-2 rounded border border-[#22344D]">
+<div class="flex items-center justify-between text-[11px] font-mono">
+<span class="text-[#8CA2BA]">파이프라인 상태:</span>
+<span class="text-[#10B981] font-bold" id="pipeline-status-text">발생 대기 (N-Window 지연 후 적용)</span>
+</div>
+<div class="w-full bg-[#17263C] h-1.5 rounded-full my-1 overflow-hidden">
+<div class="bg-[#EF4444] h-full w-0 transition-all duration-300 rounded-full" id="pipeline-progress"></div>
+</div>
+<div class="flex items-center justify-between text-[10px] font-mono text-[#8CA2BA]">
+<span id="pipeline-window-counter">Window 지연 카운터: 대기</span>
+<span class="text-[#10B981]" id="pipeline-delay-timer">Delay: —</span>
+</div>
+</div>
+</div>
+<!-- Card 2: 정상 기준 대비 센서 비교표 (Sensor Baseline Deviation) -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[#10B981] text-[17px]">compare_arrows</span>
+<h3 class="font-bold text-xs text-[#EEF4FB]">정상 기준 대비 센서 비교표</h3>
+</div>
+<span class="text-[10px] text-[#8CA2BA] font-mono">실시간 편차</span>
+</div>
+<div class="overflow-x-auto my-1 flex-1">
+<table class="w-full text-left text-[11px] font-mono">
+<thead>
+<tr class="border-b border-[#22344D] text-[#8CA2BA] font-sans text-[10px]">
+<th class="py-1 px-1">센서</th>
+<th class="py-1 px-1">현재값</th>
+<th class="py-1 px-1">기준(Base)</th>
+<th class="py-1 px-1">증감(Delta)</th>
+<th class="py-1 px-1 text-right">상태</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#22344D]/50">
+<tr class="hover:bg-[#17263C]/40" id="row-vib">
+<td class="py-1 px-1 font-sans text-[#EEF4FB] font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+<span>진동 (Vib)</span>
+</td>
+<td class="py-1 px-1 text-[#EEF4FB] font-bold" id="tbl-live-vib">—</td>
+<td class="py-1 px-1 text-[#8CA2BA]" id="tbl-base-vib">—</td>
+<td class="py-1 px-1 text-[#F59E0B] font-bold" id="tbl-delta-vib">—</td>
+<td class="py-1 px-1 text-right font-sans">
+<span class="px-1.5 py-0.2 rounded bg-[#F59E0B]/20 text-[#F59E0B] font-bold text-[10px]" id="tbl-badge-vib">대기</span>
+</td>
+</tr>
+<tr class="hover:bg-[#17263C]/40" id="row-force">
+<td class="py-1 px-1 font-sans text-[#EEF4FB] font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+<span>절삭력 (Force)</span>
+</td>
+<td class="py-1 px-1 text-[#EEF4FB] font-bold" id="tbl-live-force">—</td>
+<td class="py-1 px-1 text-[#8CA2BA]" id="tbl-base-force">—</td>
+<td class="py-1 px-1 text-[#F59E0B] font-bold" id="tbl-delta-force">—</td>
+<td class="py-1 px-1 text-right font-sans">
+<span class="px-1.5 py-0.2 rounded bg-[#F59E0B]/20 text-[#F59E0B] font-bold text-[10px]" id="tbl-badge-force">대기</span>
+</td>
+</tr>
+<tr class="hover:bg-[#17263C]/40" id="row-ae">
+<td class="py-1 px-1 font-sans text-[#EEF4FB] font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+<span>음향 (AE)</span>
+</td>
+<td class="py-1 px-1 text-[#EEF4FB] font-bold" id="tbl-live-ae">—</td>
+<td class="py-1 px-1 text-[#8CA2BA]" id="tbl-base-ae">—</td>
+<td class="py-1 px-1 text-[#10B981] font-bold" id="tbl-delta-ae">—</td>
+<td class="py-1 px-1 text-right font-sans">
+<span class="px-1.5 py-0.2 rounded bg-[#10B981]/20 text-[#10B981] font-bold text-[10px]" id="tbl-badge-ae">대기</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pt-1.5 border-t border-[#22344D] flex items-center justify-between text-[10px] text-[#8CA2BA]">
+<span id="sensor-compare-footer">실시간 센서 편차 및 센서 일관성 분석 대기</span>
+<span class="text-[#EEF4FB]">순간 변화는 연속 구간 확인 후 판정</span>
+</div>
+</div>
+<!-- Card 3: 공구 교체 & 재검증 워크플로우 진행 상태 (Safety Gate) -->
+<div class="bg-[#0F1B2D] border border-[#22344D] rounded-lg p-3 flex flex-col justify-between">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#22344D]/60">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[#8B5CF6] text-[17px]">security</span>
+<h3 class="font-bold text-xs text-[#EEF4FB]">공구 교체 후 재검증</h3>
+</div>
+<span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#8B5CF6]/15 text-[#8B5CF6] font-bold border border-[#8B5CF6]/30" id="safety-gate-badge">STANDBY</span>
+</div>
+<!-- 5-Step Compact Horizontal Stepper -->
+<div class="grid grid-cols-5 gap-1 text-center font-mono my-2 text-[10px]">
+<div class="p-1 rounded bg-[#17263C] border border-[#22344D] text-[#8CA2BA] flex flex-col items-center" id="flow-step-1">
+<span class="w-4 h-4 rounded-full bg-[#07111F] text-[#8CA2BA] flex items-center justify-center font-bold text-[9px] mb-0.5">1</span>
+<span class="font-sans font-semibold text-[10px] text-[#EEF4FB]">공구 교체</span>
+<span class="text-[9px] text-[#8CA2BA]">대기</span>
+</div>
+<div class="p-1 rounded bg-[#17263C] border border-[#22344D] text-[#8CA2BA] flex flex-col items-center" id="flow-step-2">
+<span class="w-4 h-4 rounded-full bg-[#07111F] text-[#8CA2BA] flex items-center justify-center font-bold text-[9px] mb-0.5">2</span>
+<span class="font-sans font-semibold text-[10px] text-[#EEF4FB]">재검증 필요</span>
+<span class="text-[9px] text-[#8CA2BA]">검증 전 대기</span>
+</div>
+<div class="p-1 rounded bg-[#17263C] border border-[#22344D] text-[#8CA2BA] flex flex-col items-center" id="flow-step-3">
+<span class="w-4 h-4 rounded-full bg-[#07111F] text-[#8CA2BA] flex items-center justify-center font-bold text-[9px] mb-0.5">3</span>
+<span class="font-sans font-semibold text-[10px] text-[#EEF4FB]">6개 구간</span>
+<span class="text-[9px] text-[#8CA2BA]">안정화</span>
+</div>
+<div class="p-1 rounded bg-[#17263C] border border-[#22344D] text-[#8CA2BA] flex flex-col items-center" id="flow-step-4">
+<span class="w-4 h-4 rounded-full bg-[#07111F] text-[#8CA2BA] flex items-center justify-center font-bold text-[9px] mb-0.5">4</span>
+<span class="font-sans font-semibold text-[10px] text-[#EEF4FB]">검증 판정</span>
+<span class="text-[9px] text-[#8CA2BA]">통과 확인</span>
+</div>
+<div class="p-1 rounded bg-[#17263C] border border-[#22344D] text-[#8CA2BA] flex flex-col items-center" id="flow-step-5">
+<span class="w-4 h-4 rounded-full bg-[#07111F] text-[#8CA2BA] flex items-center justify-center font-bold text-[9px] mb-0.5">5</span>
+<span class="font-sans font-semibold text-[10px] text-[#EEF4FB]">이어서 시작</span>
+<span class="text-[9px] text-[#8CA2BA]">사용자 재개</span>
+</div>
+</div>
+<!-- Stepper Progress Bar & Window Badges -->
+<div class="space-y-1">
+<div class="flex items-center justify-between text-[10px] text-[#8CA2BA] font-mono">
+<span id="reval-progress-text">6개 구간 재검증: 0 / 6 (0%)</span>
+<span class="text-[#8B5CF6] font-bold" id="reval-pct-label">대기 중</span>
+</div>
+<div class="w-full bg-[#07111F] h-1.5 rounded-full overflow-hidden border border-[#22344D]">
+<div class="bg-[#8B5CF6] h-full w-0 transition-all duration-300 rounded-full" id="reval-bar-fill"></div>
+</div>
+<div class="grid grid-cols-6 gap-1 text-center font-mono text-[9px] pt-0.5">
+<div class="py-0.5 rounded bg-[#17263C] text-[#8CA2BA]" id="step-chip-1">W1</div>
+<div class="py-0.5 rounded bg-[#17263C] text-[#8CA2BA]" id="step-chip-2">W2</div>
+<div class="py-0.5 rounded bg-[#17263C] text-[#8CA2BA]" id="step-chip-3">W3</div>
+<div class="py-0.5 rounded bg-[#17263C] text-[#8CA2BA]" id="step-chip-4">W4</div>
+<div class="py-0.5 rounded bg-[#17263C] text-[#8CA2BA]" id="step-chip-5">W5</div>
+<div class="py-0.5 rounded bg-[#17263C] text-[#8CA2BA]" id="step-chip-6">W6</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================
+         ROW 5: COMPACT COLLAPSIBLE BOTTOM UTILITY DRAWER / TABS
+    ======================================================== -->
+<section class="bg-[#0F1B2D] border border-[#22344D] rounded-lg overflow-hidden">
+<!-- Tabs Navigation & Export Row -->
+<div class="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 border-b border-[#22344D] bg-[#07111F]/80">
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-[#10B981] text-[#07111F] font-bold text-[11px] flex items-center gap-1 transition-all" id="tab-btn-audit" onclick="switchBottomTab('audit')" type="button">
+<span class="material-symbols-outlined text-[14px]">list_alt</span>
+<span>시연 이벤트 로그</span>
+</button>
+<button class="px-2.5 py-1 rounded bg-[#17263C] text-[#8CA2BA] hover:text-[#EEF4FB] font-medium text-[11px] flex items-center gap-1 transition-all" id="tab-btn-history" onclick="switchBottomTab('history')" type="button">
+<span class="material-symbols-outlined text-[14px]">history_edu</span>
+<span>공구 사용 이력</span>
+</button>
+<button class="px-2.5 py-1 rounded bg-[#17263C] text-[#8CA2BA] hover:text-[#EEF4FB] font-medium text-[11px] flex items-center gap-1 transition-all" id="tab-btn-sop" onclick="switchBottomTab('sop')" type="button">
+<span class="material-symbols-outlined text-[14px]">menu_book</span>
+<span>매뉴얼 &amp; 판단 근거</span>
+</button>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="h-7 px-2.5 rounded bg-[#17263C] hover:bg-[#22344D] text-[#EEF4FB] text-[11px] font-medium flex items-center gap-1 border border-[#22344D] transition-all" onclick="exportData('csv')" type="button">
+<span class="material-symbols-outlined text-[14px] text-[#10B981]">download</span>
+<span>전체 이력 CSV</span>
+</button>
+<button class="h-7 px-2.5 rounded bg-[#17263C] hover:bg-[#22344D] text-[#EEF4FB] text-[11px] font-medium flex items-center gap-1 border border-[#22344D] transition-all" onclick="exportData('pdf')" type="button">
+<span class="material-symbols-outlined text-[14px] text-[#F97316]">picture_as_pdf</span>
+<span>전체 이력 PDF</span>
+</button>
+</div>
+</div>
+<!-- Tab Content 1: 전체 초기화 전까지 누적되는 현재 시연 이벤트 로그 -->
+<div class="p-2.5 block" id="tab-content-audit">
+<div class="text-[10px] text-[#8CA2BA] mb-1.5">세션 초기화와 공구 교체 후에도 유지되며, 전체 초기화 시 새 시연 로그로 전환됩니다.</div>
+<div class="space-y-1 font-mono text-[11px] max-h-56 overflow-y-auto pr-1" id="audit-log-container">
+<div class="p-1.5 rounded bg-[#17263C]/80 border border-[#22344D]/50 text-[#8CA2BA]">모니터링을 시작하면 실제 이벤트가 여기에 누적됩니다.</div>
+</div>
+</div>
+<!-- Tab Content 2: 과거 공구 사용 이력 -->
+<div class="p-2.5 hidden" id="tab-content-history"><div class="grid grid-cols-1 md:grid-cols-3 gap-2 font-mono text-[11px]" id="tool-history-container"></div></div>
+<!-- Tab Content 3: 매뉴얼 & 판단 근거 -->
+<div class="p-2.5 hidden" id="tab-content-sop"><div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]" id="manual-guidance-container"></div></div>
+
+</section>
+</main>
+<!-- 화면 갱신용 JavaScript -->
+
+<div class="hidden fixed bottom-5 right-5 z-[100] max-w-md rounded-lg border border-[#EF4444]/50 bg-[#0F1B2D] px-4 py-3 text-sm text-[#EEF4FB] shadow-2xl" id="toast"></div><script src="/web/app.js"></script></body></html>

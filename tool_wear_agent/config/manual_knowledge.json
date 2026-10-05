@@ -1,0 +1,276 @@
+{
+  "version": "tool_wear_agent",
+  "description": "제조사 항목은 원본 PDF를 런타임에 직접 읽어 근거를 확인하기 위한 검색 메타데이터입니다. 화면 표시용 한국어 설명은 원문 확인이 성공한 경우에만 사용됩니다.",
+  "entries": [
+    {
+      "id": "OPS-SENSOR-FIRST",
+      "source": "tool_wear_manual.md",
+      "source_type": "프로젝트 내부 운영 기준(제조사 원문 아님)",
+      "location": "센서 이상 우선 처리 규칙",
+      "tags": [
+        "sensor",
+        "integrity",
+        "fault",
+        "dropout",
+        "stuck",
+        "safety"
+      ],
+      "guidance": "센서 데이터 신뢰성이 확보되지 않으면 해당 구간의 공구 마모 확정 판단을 보류하고 센서 재점검을 우선한다.",
+      "decision_use": "센서 이상을 공구 마모로 오판하지 않기 위한 프로젝트 안전 규칙",
+      "display_name": "센서 신뢰성 우선 규칙"
+    },
+    {
+      "id": "OPS-SUSTAINED-WEAR",
+      "source": "tool_wear_manual.md",
+      "source_type": "프로젝트 내부 운영 기준(제조사 원문 아님)",
+      "location": "지속성·다축 확인 규칙",
+      "tags": [
+        "wear",
+        "force",
+        "trend",
+        "sustained",
+        "spike",
+        "fx",
+        "fy",
+        "fz"
+      ],
+      "guidance": "단일 순간 변화만으로 마모를 확정하지 않고 여러 연속 분석 구간과 여러 절삭력 축의 지속 변화를 확인한다.",
+      "decision_use": "정량 임계값은 공개 데이터의 정상 기준과 프로젝트 검증으로 설정하며 제조사 교체 기준으로 표기하지 않음",
+      "display_name": "지속 마모 확인 규칙"
+    },
+    {
+      "id": "OPS-HOLD",
+      "source": "tool_wear_manual.md",
+      "source_type": "프로젝트 내부 운영 기준(제조사 원문 아님)",
+      "location": "HOLD·공구교체 요청 규칙",
+      "tags": [
+        "critical",
+        "hold",
+        "replace",
+        "tool wear"
+      ],
+      "guidance": "센서 이상이 배제되고 프로젝트의 지속 마모 조건이 반복 확인되면 HOLD 및 공구 점검·교체를 요청한다.",
+      "decision_use": "프로젝트 안전 조치 규칙",
+      "display_name": "공구 교체 요청 규칙"
+    },
+    {
+      "id": "ISCAR-TI-WEAR",
+      "source": "machining_titanium_05_2019.pdf",
+      "source_type": "ISCAR 제조사 원본 가공 가이드",
+      "preferred_pages": [
+        9
+      ],
+      "query_terms": [
+        "Intensive heat generation",
+        "adhesive wear",
+        "Springiness",
+        "vibrations",
+        "tool life"
+      ],
+      "tags": [
+        "titanium",
+        "heat",
+        "vibration",
+        "tool life",
+        "wear",
+        "ti-6al-4v"
+      ],
+      "decision_use": "Ti-6Al-4V 가공에서 열·진동·공구수명 관계를 원문으로 확인",
+      "display_name": "ISCAR 티타늄 가공 가이드",
+      "guidance_ko": "티타늄 가공에서는 집중적인 열 발생이 절삭날의 접착 마모를 증가시키고, 낮은 탄성계수로 인한 스프링성이 진동을 유발해 가공 정확도와 표면 품질을 악화시키며 공구 수명과 성능을 떨어뜨릴 수 있습니다."
+    },
+    {
+      "id": "ISCAR-DULL-EDGE",
+      "source": "machining_titanium_05_2019.pdf",
+      "source_type": "ISCAR 제조사 원본 가공 가이드",
+      "preferred_pages": [
+        17
+      ],
+      "query_terms": [
+        "dull",
+        "build-up edge",
+        "tool wear",
+        "serious tool damage",
+        "run out",
+        "early wear"
+      ],
+      "tags": [
+        "dull",
+        "edge",
+        "wear",
+        "damage",
+        "runout",
+        "vibration"
+      ],
+      "decision_use": "둔화된 절삭날·런아웃과 공구 마모/손상의 관계를 원문으로 확인",
+      "display_name": "ISCAR 티타늄 가공 가이드",
+      "guidance_ko": "둔해진 절삭날은 구성인선과 공구 마모를 증가시키고 심각한 공구 손상으로 이어질 수 있습니다. 또한 과도한 런아웃은 특정 절삭날의 하중과 조기 마모를 증가시키고 다른 절삭날의 과부하와 커터 파손으로 이어질 수 있습니다."
+    },
+    {
+      "id": "ISCAR-STABILITY",
+      "source": "machining_titanium_05_2019.pdf",
+      "source_type": "ISCAR 제조사 원본 가공 가이드",
+      "preferred_pages": [
+        16,
+        19
+      ],
+      "query_terms": [
+        "springiness",
+        "vibrations",
+        "rigidity",
+        "tool holding",
+        "tool overhang",
+        "unstable conditions"
+      ],
+      "tags": [
+        "stability",
+        "chatter",
+        "vibration",
+        "overhang",
+        "holding"
+      ],
+      "decision_use": "진동 증가 시 마모 외에 강성·체결·오버행 등 불안정 조건도 원문으로 확인",
+      "display_name": "ISCAR 티타늄 가공 가이드",
+      "guidance_ko": "티타늄은 높은 절삭 부하와 스프링성 때문에 진동이 증가할 수 있으므로, 진동 변화가 나타날 때는 공구 마모뿐 아니라 장비 강성, 공작물·공구 체결 상태와 공구 오버행 등 가공 안정성도 함께 확인해야 합니다."
+    },
+    {
+      "id": "KISTLER-4COMP",
+      "source": "012-021e.pdf",
+      "source_type": "Kistler 9170B 제조사 원본 매뉴얼",
+      "preferred_pages": [
+        11
+      ],
+      "query_terms": [
+        "Fx",
+        "Fy",
+        "Fz",
+        "Mz",
+        "wear mechanisms",
+        "tool life",
+        "process monitoring"
+      ],
+      "tags": [
+        "kistler",
+        "9170b",
+        "fx",
+        "fy",
+        "fz",
+        "mz",
+        "force",
+        "process monitoring"
+      ],
+      "decision_use": "절삭력 측정과 공구수명·마모·공정 모니터링 용도를 원문으로 확인",
+      "display_name": "Kistler 9170B 절삭력 측정 매뉴얼",
+      "guidance_ko": "Kistler 9170B는 회전 공구의 Fx, Fy, Fz와 토크 Mz를 측정하며, 마모 메커니즘 조사, 공구 수명 결정, 절삭 공정 분석과 공정 모니터링에 사용할 수 있습니다."
+    },
+    {
+      "id": "KISTLER-FORCE-INTERPRET",
+      "source": "012-021e.pdf",
+      "source_type": "Kistler 9170B 제조사 원본 매뉴얼",
+      "preferred_pages": [
+        11,
+        42,
+        43
+      ],
+      "query_terms": [
+        "force components",
+        "Fx",
+        "Fy",
+        "Fz",
+        "milling",
+        "process monitoring"
+      ],
+      "tags": [
+        "force",
+        "fx",
+        "fy",
+        "fz",
+        "resultant",
+        "interpretation"
+      ],
+      "decision_use": "절삭력 신호를 공정 상태 판단의 근거로 사용하는 맥락을 원문으로 확인",
+      "display_name": "Kistler 9170B 절삭력 측정 매뉴얼",
+      "guidance_ko": "회전식 동력계의 좌표계는 공구와 함께 회전하므로 Fx와 Fy 신호는 고정식 동력계 신호처럼 단순 비교하면 안 됩니다. 절삭력 성분과 합성력의 관계를 고려해 공정 상태를 해석해야 합니다."
+    },
+    {
+      "id": "KISTLER-SIGNAL-INFLUENCE",
+      "source": "012-021e.pdf",
+      "source_type": "Kistler 9170B 제조사 원본 매뉴얼",
+      "preferred_pages": [
+        47,
+        50,
+        51
+      ],
+      "query_terms": [
+        "Influence of the speed",
+        "Fz signal",
+        "kept constant",
+        "temperature",
+        "coolant"
+      ],
+      "tags": [
+        "speed",
+        "temperature",
+        "signal",
+        "fz",
+        "measurement",
+        "artifact"
+      ],
+      "decision_use": "속도·온도·냉각수 등 측정조건이 신호에 영향을 줄 수 있음을 원문으로 확인",
+      "display_name": "Kistler 9170B 절삭력 측정 매뉴얼",
+      "guidance_ko": "스핀들 속도, 온도, 냉각수 압력 등 측정 조건은 절삭력 신호, 특히 Fz에 영향을 줄 수 있습니다. 따라서 이상 신호를 해석할 때는 측정 조건의 변화 여부도 함께 확인해야 합니다."
+    },
+    {
+      "id": "WEBDAQ-ACQ",
+      "source": "webdaq-504.pdf",
+      "source_type": "WebDAQ 504 제조사 원본 매뉴얼",
+      "preferred_pages": [
+        11,
+        22
+      ],
+      "query_terms": [
+        "simultaneously sampled",
+        "51.2 kS/s",
+        "24 bits",
+        "IEPE"
+      ],
+      "tags": [
+        "webdaq",
+        "acquisition",
+        "vibration",
+        "acoustic",
+        "iepe",
+        "sampling"
+      ],
+      "decision_use": "다중 채널 동시 수집 및 샘플링 사양을 원문으로 확인",
+      "display_name": "WebDAQ 504 사용자 가이드",
+      "guidance_ko": "WebDAQ 504는 4개의 아날로그 입력을 동시에 샘플링하며 24비트 분해능과 채널당 최대 51.2 kS/s의 데이터 수집을 지원합니다."
+    },
+    {
+      "id": "WEBDAQ-IEPE",
+      "source": "webdaq-504.pdf",
+      "source_type": "WebDAQ 504 제조사 원본 매뉴얼",
+      "preferred_pages": [
+        11
+      ],
+      "query_terms": [
+        "IEPE sensor types",
+        "acceleration",
+        "sound pressure",
+        "force",
+        "simultaneously sampled"
+      ],
+      "tags": [
+        "iepe",
+        "acceleration",
+        "sound",
+        "force",
+        "sensor",
+        "channel"
+      ],
+      "decision_use": "가속도·음압·힘 센서 입력 지원을 원문으로 확인",
+      "display_name": "WebDAQ 504 사용자 가이드",
+      "guidance_ko": "WebDAQ 504의 IEPE 입력은 가속도, 음압, 속도, 힘 센서를 지원하며 각 아날로그 채널을 동시에 샘플링할 수 있습니다."
+    }
+  ]
+}
